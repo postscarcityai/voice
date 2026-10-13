@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 // One small interface over two databases:
-//   Postgres (Neon or any Postgres), when DATABASE_URL starts with postgres://
+//   Postgres (Supabase, Neon, any Postgres), when DATABASE_URL starts with postgres://
 //   SQLite through libSQL otherwise: a local file by default, or Turso
 // Queries are written once, with ? placeholders, in SQL both understand.
 
@@ -15,7 +15,7 @@ export interface Database {
   batch(statements: { sql: string; args?: Args }[]): Promise<void>;
 }
 
-const SCHEMA = [
+export const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS clients (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -115,6 +115,15 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS requests_client ON requests(client_id, created_at)`,
 ];
 
+const TABLES = ["clients", "agents", "interviews", "links", "sessions", "requests", "settings"];
+
+/**
+ * Hosts like Supabase expose the public schema over a REST API. Row level
+ * security with no policies closes that door: only the server's own database
+ * connection (which owns the tables) can read or write them.
+ */
+export const POSTGRES_ONLY = TABLES.map((t) => `ALTER TABLE ${t} ENABLE ROW LEVEL SECURITY`);
+
 /** ? placeholders become $1, $2... for Postgres. None of our SQL has a literal "?". */
 const numbered = (sql: string) => {
   let i = 0;
@@ -122,12 +131,15 @@ const numbered = (sql: string) => {
 };
 
 async function postgres(url: string): Promise<Database> {
-  const { neon } = await import("@neondatabase/serverless");
-  const sql = neon(url);
+  const { default: connect } = await import("postgres");
+  // prepare: false works with transaction poolers (Supabase on :6543, PgBouncer, Neon pooled URLs)
+  const sql = connect(url, { prepare: false, max: 5, idle_timeout: 20, connect_timeout: 15 });
   return {
-    query: async (text, args = []) => (await sql.query(numbered(text), args)) as Row[],
+    query: async (text, args = []) => [...(await sql.unsafe(numbered(text), args))] as Row[],
     batch: async (statements) => {
-      await sql.transaction(statements.map((s) => sql.query(numbered(s.sql), s.args ?? [])));
+      await sql.begin(async (tx) => {
+        for (const s of statements) await tx.unsafe(numbered(s.sql), s.args ?? []);
+      });
     },
   };
 }
@@ -151,12 +163,13 @@ async function sqlite(url: string, authToken?: string): Promise<Database> {
 let ready: Promise<Database> | null = null;
 
 async function connect(): Promise<Database> {
-  // Vercel's Neon integration sets DATABASE_URL; its Turso integration sets TURSO_*
+  // Vercel's Turso integration sets TURSO_*
   const url = process.env.DATABASE_URL || process.env.TURSO_DATABASE_URL || "file:data/voice.db";
-  const database = /^postgres(ql)?:\/\//.test(url)
+  const isPostgres = /^postgres(ql)?:\/\//.test(url);
+  const database = isPostgres
     ? await postgres(url)
     : await sqlite(url, process.env.DATABASE_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN || undefined);
-  await database.batch(SCHEMA.map((sql) => ({ sql })));
+  await database.batch([...SCHEMA, ...(isPostgres ? POSTGRES_ONLY : [])].map((sql) => ({ sql })));
   return database;
 }
 
