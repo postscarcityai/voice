@@ -75,7 +75,8 @@ async function main() {
       const existing = (await listInterviews(agent.id)).find((i) => i.title === input.title);
       const interview = existing ? (await updateInterview(existing.id, input))! : await createInterview(agent.id, input);
       let links = await listLinks(interview.id);
-      if (!links.length) links = [await createLink(interview.id, client.name)];
+      const label = interview.audience === "team" ? client.owner || "Team" : client.name;
+      if (!links.length) links = [await createLink(interview.id, label)];
       const what = interview.kind === "open_line" ? "open line" : `${interview.topics.length} topics, ~${interview.estimatedMinutes} min`;
       console.log(`    ${existing ? "Updated" : "Created"} "${interview.title}" (${what})`);
       for (const l of links.filter((x) => !x.revoked)) console.log(`      ${base}/s/${l.token}`);

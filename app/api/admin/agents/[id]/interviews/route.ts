@@ -10,6 +10,6 @@ export async function POST(request: Request, ctx: RouteContext<"/api/admin/agent
   const input = TEMPLATES.find((t) => t.id === template)?.input ?? BLANK;
   const interview = await createInterview(agent.id, input);
   const client = await getClient(agent.clientId);
-  await createLink(interview.id, client?.name ?? "");
+  await createLink(interview.id, (interview.audience === "team" ? client?.owner : client?.name) ?? "");
   return json({ interview }, 201);
 }
