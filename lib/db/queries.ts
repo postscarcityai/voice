@@ -546,7 +546,7 @@ function toRequest(r: Row): ClientRequest {
 export type RequestRow = ClientRequest & { clientName: string; clientCompany: string };
 
 export async function listRequests(
-  filter: { clientId?: string; openOnly?: boolean } = {},
+  filter: { clientId?: string; openOnly?: boolean; clientFacingOnly?: boolean } = {},
   limit = 200,
 ): Promise<RequestRow[]> {
   const where: string[] = [];
@@ -556,6 +556,11 @@ export async function listRequests(
     args.push(filter.clientId);
   }
   if (filter.openOnly) where.push("r.status IN ('new', 'in_progress')");
+  // Requests raised in an internal team briefing are for the team, not the client
+  if (filter.clientFacingOnly) {
+    where.push(`(r.session_id IS NULL OR r.session_id NOT IN (
+      SELECT s.id FROM sessions s JOIN interviews i ON i.id = s.interview_id WHERE i.audience = 'team'))`);
+  }
   const rs = await rows(
     `SELECT r.*, c.name AS client_name, c.company AS client_company FROM requests r
      JOIN clients c ON c.id = r.client_id

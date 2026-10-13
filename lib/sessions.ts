@@ -14,7 +14,7 @@ export async function callContext(brief: Brief): Promise<CallContext> {
   const progress = brief.interview.kind === "open_line" ? null : interviewProgress(brief.interview, sessions);
   const openRequests =
     brief.interview.kind === "open_line"
-      ? (await listRequests({ clientId: brief.client.id }, 40)).filter(
+      ? (await listRequests({ clientId: brief.client.id, clientFacingOnly: true }, 40)).filter(
           // Open ones, plus anything closed in the last 30 days
           (r) => r.status === "new" || r.status === "in_progress" || Date.parse(r.updatedAt) > Date.now() - 30 * 864e5,
         )
