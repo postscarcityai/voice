@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, SectionTitle, btn } from "./ui";
+import { Badge, Card, SectionTitle, btn } from "./ui";
 
 export function Field({
   label,
@@ -156,10 +156,27 @@ interface LibraryVoice {
   name: string;
   description: string;
   tags: string;
-  languages: string[];
+  accents: string;
+  bilingual: boolean;
+  paidOnly: boolean;
   previewUrl: string | null;
   uses: number;
 }
+
+const ACCENTS = [
+  "latin american",
+  "venezuelan",
+  "cuban",
+  "caribbean",
+  "colombian",
+  "mexican",
+  "argentine",
+  "chilean",
+  "peruvian",
+  "peninsular",
+  "american",
+  "british",
+];
 
 /** One audio element for every preview button, so only one sample plays at a time */
 let previewAudio: HTMLAudioElement | null = null;
@@ -273,7 +290,7 @@ function VoiceLibrary({ onPick }: { onPick: (voiceId: string) => void }) {
   return (
     <div className="rounded-lg border border-border bg-muted/40 p-4">
       <form
-        className="grid gap-2 sm:grid-cols-[1fr_120px_90px_140px_auto]"
+        className="grid gap-2 sm:grid-cols-[1fr_120px_110px_160px_auto]"
         onSubmit={(e) => {
           e.preventDefault();
           void search();
@@ -286,14 +303,32 @@ function VoiceLibrary({ onPick }: { onPick: (voiceId: string) => void }) {
           <option value="male">Male</option>
           <option value="neutral">Neutral</option>
         </select>
-        <input className="field" placeholder="Lang" value={filters.language} onChange={(e) => set("language", e.target.value)} aria-label="Language code" />
-        <input className="field" placeholder="Accent" value={filters.accent} onChange={(e) => set("accent", e.target.value)} aria-label="Accent" />
+        <select className="field" value={filters.language} onChange={(e) => set("language", e.target.value)} aria-label="Language">
+          <option value="">Any language</option>
+          <option value="es">Spanish</option>
+          <option value="en">English</option>
+          <option value="pt">Portuguese</option>
+          <option value="fr">French</option>
+        </select>
+        <select className="field capitalize" value={filters.accent} onChange={(e) => set("accent", e.target.value)} aria-label="Accent">
+          <option value="">Any accent</option>
+          {ACCENTS.map((a) => (
+            <option key={a} value={a}>
+              {a}
+            </option>
+          ))}
+        </select>
         <button className={btn.primary} disabled={busy === "search"}>
           {busy === "search" ? "Searching…" : "Search"}
         </button>
       </form>
       {error && <p className="mt-3 text-sm text-danger">{error}</p>}
       {results && results.length === 0 && <p className="mt-4 text-sm text-fg-muted">No voices match. Try fewer filters.</p>}
+      {results && results.length > 0 && (
+        <p className="mt-3 text-xs text-fg-muted">
+          {results.length} voices. English + Spanish voices first. &quot;Paid plan&quot; voices need a paid ElevenLabs plan.
+        </p>
+      )}
       {results && results.length > 0 && (
         <ul className="mt-4 flex max-h-96 flex-col divide-y divide-border overflow-y-auto">
           {results.map((v) => (
@@ -308,11 +343,13 @@ function VoiceLibrary({ onPick }: { onPick: (voiceId: string) => void }) {
                 ▶
               </button>
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium">{v.name}</div>
-                <div className="text-xs text-fg-muted">
-                  {v.tags}
-                  {v.languages.length > 0 && <> · speaks {v.languages.join(", ")}</>}
+                <div className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
+                  {v.name}
+                  {v.bilingual && <Badge tone="ok">English + Spanish</Badge>}
+                  {v.paidOnly && <Badge tone="warn">Paid plan</Badge>}
                 </div>
+                <div className="text-xs capitalize text-fg-muted">{v.tags}</div>
+                {v.accents && <div className="text-xs text-fg-muted">{v.accents}</div>}
                 {v.description && <p className="mt-1 line-clamp-2 text-xs text-fg-muted">{v.description}</p>}
               </div>
               <button type="button" className={btn.primary} disabled={!!busy} onClick={() => use(v)}>

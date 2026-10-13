@@ -372,6 +372,7 @@ export interface LibraryVoice {
   cloned_by_count?: number;
   live_moderation_enabled?: boolean;
   is_added_by_user?: boolean;
+  free_users_allowed?: boolean;
   verified_languages?: { language: string; accent?: string; locale?: string; preview_url?: string }[] | null;
 }
 
@@ -383,7 +384,7 @@ export async function searchVoiceLibrary(filters: {
   accent?: string;
   age?: string;
 }) {
-  const q = new URLSearchParams({ page_size: "30", include_live_moderated: "false", include_custom_rates: "false" });
+  const q = new URLSearchParams({ page_size: "100", include_live_moderated: "false", include_custom_rates: "false" });
   for (const [k, v] of Object.entries(filters)) if (v) q.set(k, v);
   const res = await call<{ voices: LibraryVoice[]; has_more: boolean }>(`/v1/shared-voices?${q}`);
   return res.voices.filter((v) => !v.live_moderation_enabled);
