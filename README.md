@@ -135,12 +135,21 @@ Voice creates and updates agents through the [ElevenAgents API](https://elevenla
 
 ## Deploying
 
-Voice is a standard Next.js app. It keeps its data in SQLite through [libSQL](https://github.com/tursodatabase/libsql):
+Voice is a standard Next.js app. Tables are created on the first request. The database depends on `DATABASE_URL`:
 
-- **On a server with a disk** (Fly, Railway, Render, a VPS): run `npm run build && npm start` and keep the default `DATABASE_URL=file:data/voice.db` on a persistent volume.
-- **On serverless** (Vercel and similar): create a [Turso](https://turso.tech) database and set `DATABASE_URL=libsql://…` and `DATABASE_AUTH_TOKEN`. Tables are created on the first request. To load clients into it, run the seed locally with those variables set.
+| `DATABASE_URL` | Database | Use it for |
+| --- | --- | --- |
+| empty | SQLite file at `data/voice.db` | Local development, or a server with a disk |
+| `postgres://…` | Postgres, e.g. [Neon](https://neon.tech) | Vercel and other serverless hosts |
+| `libsql://…` | [Turso](https://turso.tech), with `DATABASE_AUTH_TOKEN` | Serverless, if you prefer SQLite |
 
-Set `PUBLIC_URL` so share links use your domain. Microphones need HTTPS, except on localhost.
+**On Vercel:** import the repo, add the Neon integration from the Vercel Marketplace (the free tier is plenty, and it sets `DATABASE_URL`), and set `ELEVENLABS_API_KEY`, `ADMIN_PASSWORD`, `SESSION_SECRET`, and optionally `ANTHROPIC_API_KEY` and `PUBLIC_URL`. To load a client into production, run the seed locally against the production database:
+
+```bash
+DATABASE_URL="postgres://…" npm run seed -- clients/acme.json
+```
+
+Microphones need HTTPS, except on localhost.
 
 ## Security and privacy
 
@@ -171,7 +180,7 @@ lib/
   report.ts               The Claude-written handoff
   templates.ts            Starting points for new interviews
   public.ts               What a client's browser may see
-  db/                     libSQL schema and queries
+  db/                     Schema and queries, for Postgres or SQLite
 proxy.ts                  Guards /admin and /api/admin
 scripts/seed.ts           Load a client from JSON
 examples/                 A fictional client
@@ -187,7 +196,7 @@ examples/                 A fictional client
 | Styling | Tailwind CSS v4 |
 | Voice | ElevenLabs ElevenAgents, `@elevenlabs/react`, WebRTC, Eleven v4 Turbo |
 | Handoffs | Claude Opus 5.5 via `@anthropic-ai/sdk` |
-| Database | SQLite via libSQL (local file or Turso) |
+| Database | Postgres (Neon) or SQLite (local file or Turso) |
 
 ## Scripts
 

@@ -1,10 +1,19 @@
-import { createClient, type Client } from "@libsql/client";
 import fs from "node:fs";
 import path from "node:path";
 
-// SQLite through libSQL. Locally that is a file in data/; in production point
-// DATABASE_URL at a Turso database (libsql://...) or any libSQL server, so the
-// app runs on serverless hosts like Vercel as well as on a box with a disk.
+// One small interface over two databases:
+//   Postgres (Neon or any Postgres), when DATABASE_URL starts with postgres://
+//   SQLite through libSQL otherwise: a local file by default, or Turso
+// Queries are written once, with ? placeholders, in SQL both understand.
+
+export type Row = Record<string, unknown>;
+export type Args = (string | number | null)[];
+
+export interface Database {
+  query(sql: string, args?: Args): Promise<Row[]>;
+  /** Several writes that succeed or fail together */
+  batch(statements: { sql: string; args?: Args }[]): Promise<void>;
+}
 
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS clients (
@@ -106,35 +115,58 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS requests_client ON requests(client_id, created_at)`,
 ];
 
-let client: Client | null = null;
-let ready: Promise<void> | null = null;
+/** ? placeholders become $1, $2... for Postgres. None of our SQL has a literal "?". */
+const numbered = (sql: string) => {
+  let i = 0;
+  return sql.replace(/\?/g, () => `$${++i}`);
+};
 
-function connect(): Client {
-  // TURSO_* are the names the Vercel Turso integration sets
-  const url = process.env.DATABASE_URL || process.env.TURSO_DATABASE_URL || "file:data/voice.db";
-  if (url.startsWith("file:")) {
-    const file = url.slice("file:".length);
-    fs.mkdirSync(path.dirname(path.resolve(file)), { recursive: true });
-  }
-  return createClient({
-    url,
-    authToken: process.env.DATABASE_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN || undefined,
-  });
+async function postgres(url: string): Promise<Database> {
+  const { neon } = await import("@neondatabase/serverless");
+  const sql = neon(url);
+  return {
+    query: async (text, args = []) => (await sql.query(numbered(text), args)) as Row[],
+    batch: async (statements) => {
+      await sql.transaction(statements.map((s) => sql.query(numbered(s.sql), s.args ?? [])));
+    },
+  };
 }
 
-/** The database client, with the schema applied on first use. */
-export async function db(): Promise<Client> {
-  if (!client) client = connect();
+async function sqlite(url: string, authToken?: string): Promise<Database> {
+  const { createClient } = await import("@libsql/client");
+  if (url.startsWith("file:")) fs.mkdirSync(path.dirname(path.resolve(url.slice(5))), { recursive: true });
+  const client = createClient({ url, authToken });
+  await client.execute("PRAGMA foreign_keys = ON");
+  return {
+    query: async (sql, args = []) => (await client.execute({ sql, args })).rows as unknown as Row[],
+    batch: async (statements) => {
+      await client.batch(
+        statements.map((s) => ({ sql: s.sql, args: s.args ?? [] })),
+        "write",
+      );
+    },
+  };
+}
+
+let ready: Promise<Database> | null = null;
+
+async function connect(): Promise<Database> {
+  // Vercel's Neon integration sets DATABASE_URL; its Turso integration sets TURSO_*
+  const url = process.env.DATABASE_URL || process.env.TURSO_DATABASE_URL || "file:data/voice.db";
+  const database = /^postgres(ql)?:\/\//.test(url)
+    ? await postgres(url)
+    : await sqlite(url, process.env.DATABASE_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN || undefined);
+  await database.batch(SCHEMA.map((sql) => ({ sql })));
+  return database;
+}
+
+/** The database, with the schema applied on first use. */
+export function db(): Promise<Database> {
   if (!ready) {
-    const c = client;
-    ready = (async () => {
-      await c.execute("PRAGMA foreign_keys = ON");
-      await c.batch(SCHEMA, "write");
-    })().catch((err) => {
+    ready = connect().catch((err) => {
       ready = null;
       throw err;
     });
   }
-  await ready;
-  return client;
+  return ready;
 }

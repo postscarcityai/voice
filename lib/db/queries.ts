@@ -1,6 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import type { InArgs, Row } from "@libsql/client";
-import { db } from "./index";
+import { db, type Args, type Row } from "./index";
 import type {
   Agent,
   AgentInput,
@@ -32,14 +31,12 @@ function json<T>(value: unknown, fallback: T): T {
 
 const str = (v: unknown) => (v == null ? null : String(v));
 
-async function rows(sql: string, args: InArgs = []) {
-  const c = await db();
-  return (await c.execute({ sql, args })).rows;
+async function rows(sql: string, args: Args = []) {
+  return (await db()).query(sql, args);
 }
 
-async function run(sql: string, args: InArgs = []) {
-  const c = await db();
-  await c.execute({ sql, args });
+async function run(sql: string, args: Args = []) {
+  await (await db()).query(sql, args);
 }
 
 // ---------------------------------------------------------------- clients
@@ -64,8 +61,8 @@ export async function listClients() {
   const rs = await rows(
     `SELECT c.*,
       (SELECT COUNT(*) FROM agents a WHERE a.client_id = c.id) AS agent_count,
-      (SELECT COUNT(*) FROM (${CLIENT_CALLS})) AS call_count,
-      (SELECT MAX(started_at) FROM (${CLIENT_CALLS})) AS last_call_at,
+      (SELECT COUNT(*) FROM (${CLIENT_CALLS}) AS calls) AS call_count,
+      (SELECT MAX(started_at) FROM (${CLIENT_CALLS}) AS calls) AS last_call_at,
       (SELECT COUNT(*) FROM requests r WHERE r.client_id = c.id AND r.status = 'new') AS new_requests
      FROM clients c ORDER BY c.updated_at DESC`,
   );
@@ -106,17 +103,14 @@ export async function deleteClient(id: string) {
   const c = await db();
   const agentIds = "SELECT id FROM agents WHERE client_id = ?";
   const interviewIds = `SELECT id FROM interviews WHERE agent_id IN (${agentIds})`;
-  await c.batch(
-    [
-      { sql: `DELETE FROM sessions WHERE interview_id IN (${interviewIds})`, args: [id] },
-      { sql: `DELETE FROM links WHERE interview_id IN (${interviewIds})`, args: [id] },
-      { sql: `DELETE FROM interviews WHERE agent_id IN (${agentIds})`, args: [id] },
-      { sql: "DELETE FROM agents WHERE client_id = ?", args: [id] },
-      { sql: "DELETE FROM requests WHERE client_id = ?", args: [id] },
-      { sql: "DELETE FROM clients WHERE id = ?", args: [id] },
-    ],
-    "write",
-  );
+  await c.batch([
+    { sql: `DELETE FROM sessions WHERE interview_id IN (${interviewIds})`, args: [id] },
+    { sql: `DELETE FROM links WHERE interview_id IN (${interviewIds})`, args: [id] },
+    { sql: `DELETE FROM interviews WHERE agent_id IN (${agentIds})`, args: [id] },
+    { sql: "DELETE FROM agents WHERE client_id = ?", args: [id] },
+    { sql: "DELETE FROM requests WHERE client_id = ?", args: [id] },
+    { sql: "DELETE FROM clients WHERE id = ?", args: [id] },
+  ]);
 }
 
 // ----------------------------------------------------------------- agents
@@ -179,15 +173,12 @@ export async function updateAgent(id: string, input: AgentInput) {
 export async function deleteAgent(id: string) {
   const c = await db();
   const interviewIds = "SELECT id FROM interviews WHERE agent_id = ?";
-  await c.batch(
-    [
-      { sql: `DELETE FROM sessions WHERE interview_id IN (${interviewIds})`, args: [id] },
-      { sql: `DELETE FROM links WHERE interview_id IN (${interviewIds})`, args: [id] },
-      { sql: "DELETE FROM interviews WHERE agent_id = ?", args: [id] },
-      { sql: "DELETE FROM agents WHERE id = ?", args: [id] },
-    ],
-    "write",
-  );
+  await c.batch([
+    { sql: `DELETE FROM sessions WHERE interview_id IN (${interviewIds})`, args: [id] },
+    { sql: `DELETE FROM links WHERE interview_id IN (${interviewIds})`, args: [id] },
+    { sql: "DELETE FROM interviews WHERE agent_id = ?", args: [id] },
+    { sql: "DELETE FROM agents WHERE id = ?", args: [id] },
+  ]);
 }
 
 // ------------------------------------------------------------- interviews
@@ -289,14 +280,11 @@ export async function saveInterviewReport(id: string, markdown: string) {
 
 export async function deleteInterview(id: string) {
   const c = await db();
-  await c.batch(
-    [
-      { sql: "DELETE FROM sessions WHERE interview_id = ?", args: [id] },
-      { sql: "DELETE FROM links WHERE interview_id = ?", args: [id] },
-      { sql: "DELETE FROM interviews WHERE id = ?", args: [id] },
-    ],
-    "write",
-  );
+  await c.batch([
+    { sql: "DELETE FROM sessions WHERE interview_id = ?", args: [id] },
+    { sql: "DELETE FROM links WHERE interview_id = ?", args: [id] },
+    { sql: "DELETE FROM interviews WHERE id = ?", args: [id] },
+  ]);
 }
 
 /** The client, agent and interview behind an interview id */
@@ -527,7 +515,7 @@ export async function saveSession(s: Session) {
       JSON.stringify(s.transcript),
       JSON.stringify(s.extracted),
       s.callSummary,
-      s.durationSeconds,
+      s.durationSeconds == null ? null : Math.round(s.durationSeconds),
       s.endedAt,
       s.syncedAt,
       s.id,
@@ -582,8 +570,8 @@ export async function insertRequest(
 ) {
   const t = now();
   await run(
-    `INSERT OR IGNORE INTO requests (id, client_id, session_id, type, title, details, urgency, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO requests (id, client_id, session_id, type, title, details, urgency, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING`,
     [req.id, req.clientId, req.sessionId, req.type, req.title, req.details, req.urgency, t, t],
   );
 }
