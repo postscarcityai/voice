@@ -203,24 +203,19 @@ export function agentConfig(brief: Brief, toolIds: string[], ctx: CallContext = 
               "Stay quiet when they ask for a moment to think or look something up.",
               { wait_timeout_secs: -1 },
             ),
-            ...(multilingual
-              ? {
-                  language_detection: systemTool(
-                    "language_detection",
-                    "Switch language when they start speaking another language or ask you to.",
-                    { only_at_conversation_start: false },
-                  ),
-                }
-              : {}),
+            // Updates merge into the existing agent, so a tool that's off must be sent as null to remove it
+            language_detection: multilingual
+              ? systemTool("language_detection", "Switch language when they start speaking another language or ask you to.", {
+                  only_at_conversation_start: false,
+                })
+              : null,
           },
         },
       },
-      // Each extra language the agent may switch into mid-call
-      ...(multilingual
-        ? {
-            language_presets: Object.fromEntries(agent.extraLanguages.map((l) => [l, { overrides: {} }])),
-          }
-        : {}),
+      // Each extra language the agent may switch into mid-call (empty clears any left from before)
+      language_presets: multilingual
+        ? Object.fromEntries(agent.extraLanguages.map((l) => [l, { overrides: {} }]))
+        : {},
       tts: {
         model_id: env.ttsModel || DEFAULT_TTS_MODEL,
         voice_id: agent.voiceId || env.defaultVoiceId || FALLBACK_VOICE_ID,
