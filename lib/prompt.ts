@@ -28,6 +28,10 @@ export function suggestedMinutes(topicCount: number): number {
 
 const firstName = (name: string) => name.trim().split(/\s+/)[0] || "";
 
+/** Who's on the call: the client, or (for a team briefing) the person who works with them */
+export const speakerName = (brief: Brief) =>
+  brief.interview.audience === "team" ? brief.client.owner || "the team" : brief.client.name;
+
 const LANGUAGE_NAMES: Record<string, string> = {
   en: "English",
   es: "Spanish",
@@ -116,7 +120,9 @@ function requestsSection(requests: CallContext["openRequests"]): string {
 
 export function buildSystemPrompt(brief: Brief, opts: PromptOptions, ctx: CallContext = {}): string {
   const { client, agent, interview } = brief;
-  const them = firstName(client.name) || "the client";
+  const team = interview.audience === "team";
+  const clientFirst = firstName(client.name) || "the client";
+  const them = firstName(speakerName(brief)) || "the client";
   const owner = client.owner || `the ${opts.orgName} team`;
   const ownerFirst = firstName(client.owner) || `the ${opts.orgName} team`;
   const isOpenLine = interview.kind === "open_line";
@@ -141,20 +147,28 @@ export function buildSystemPrompt(brief: Brief, opts: PromptOptions, ctx: CallCo
       "Who you are",
       `Your name is ${agent.name}. ${agent.persona}
 
-You work with ${opts.orgName} (say it as "${opts.orgNameSpoken}"), on behalf of ${owner}. You're talking with ${client.name}${client.company ? ` of ${client.company}` : ""} in a live voice call in their web browser.`,
+${
+        team
+          ? `You work with ${opts.orgName} (say it as "${opts.orgNameSpoken}"). This is an internal briefing, not a client call: you're talking with ${owner}, who works with ${client.name}${client.company ? ` of ${client.company}` : ""}, in a live voice call in their web browser. Everything below about ${clientFirst} is background you can discuss openly with ${them}, including the rules and sensitivities. Nothing from this call is shared with ${clientFirst}.`
+          : `You work with ${opts.orgName} (say it as "${opts.orgNameSpoken}"), on behalf of ${owner}. You're talking with ${client.name}${client.company ? ` of ${client.company}` : ""} in a live voice call in their web browser.`
+      }`,
     ),
     section("Your role in this conversation", interview.role),
     section("Goal", interview.goal),
     section(
-      `What we already know about ${them}${client.company ? ` and ${client.company}` : ""}`,
+      `What we already know about ${clientFirst}${client.company ? ` and ${client.company}` : ""}`,
       client.context
         ? `${client.context}
 
-Never ask ${them} to repeat any of this. Use it to make your questions sharper ("You went from X to Y. What made you switch?"), but don't recite it back as a list.`
+${
+            team
+              ? `${them} knows all of this. Don't ask them to repeat it: ask what's missing, wrong, out of date, or most important.`
+              : `Never ask ${them} to repeat any of this. Use it to make your questions sharper ("You went from X to Y. What made you switch?"), but don't recite it back as a list.`
+          }`
         : "",
     ),
     section("Progress so far", progressSection(brief, ctx.progress)),
-    section(`${them}'s requests so far`, requestsSection(ctx.openRequests)),
+    section(`${clientFirst}'s requests so far`, requestsSection(ctx.openRequests)),
     section("How this conversation works", interview.method || (isOpenLine ? DEFAULT_OPEN_LINE_METHOD : DEFAULT_INTERVIEW_METHOD)),
     section(
       isOpenLine ? "Topics" : `The ${interview.topics.length} topics`,
@@ -169,14 +183,18 @@ Never ask ${them} to repeat any of this. Use it to make your questions sharper (
 During the close, mention only the items that are still missing, briefly: say the list is on their screen and they can reply to ${ownerFirst} by email. Don't read the whole list aloud. If they answer one during the call, call check_item.`
         : "",
     ),
-    section("Rules and sensitivities", client.guardrails),
+    section(team ? `How ${clientFirst} must be treated (background for this briefing)` : "Rules and sensitivities", client.guardrails),
     section(
       "Speaking, the screen, and your tools",
       `This is a voice call, not a chat. Everything you say becomes speech. Where your brief says "message", it means your spoken turn.
 - Keep turns short: usually one to three sentences, and never more than about 20 seconds of speech. When the brief asks you to combine several follow-ups, group two or three short, related questions in one turn, then stop and listen.
 - No lists, headings, markdown, emoji, or symbols. Never read out ids or tool names.
 - They may talk for a long time, and pause to think. Let them finish. Don't jump into a pause unless they're clearly done.
-- If you didn't catch something, ask them to repeat it.${languages.length > 1 ? `\n- They may speak ${languages.join(" or ")}. If they switch languages, switch with them, and keep any quoted lines in the language they used.` : ""}
+- If you didn't catch something, ask them to repeat it.${
+        languages.length > 1
+          ? `\n- They may speak ${languages.join(", ")}, or mix them, even mid-sentence. Mirror their mix naturally and answer in whichever language they're mostly using. Never ask them to pick one. Keep quoted lines exactly as said, in the language they used.`
+          : ""
+      }
 - If they ask whether you're an AI, say yes, simply, and carry on.
 
 Their screen follows along. Use these tools as you go; they're silent, so keep talking naturally:
@@ -193,7 +211,7 @@ ${
     : `If they need to stop early, that's fine: save_summary with what you covered, tell them they can pick it back up any time with the same link, and you'll start where you left off. Then say goodbye and end the call.`
 }
 
-${ownerFirst} gets a written handoff after the call, built from everything said and captured. You never need to read a handoff aloud.`,
+${team ? "A written briefing" : `${ownerFirst} gets a written handoff`} after the call, built from everything said and captured. You never need to read it aloud.`,
     ),
   ]
     .filter(Boolean)
@@ -202,8 +220,8 @@ ${ownerFirst} gets a written handoff after the call, built from everything said 
 
 /** The agent's first spoken line. Resumed interviews get a welcome back instead of the opening. */
 export function buildFirstMessage(brief: Brief, opts: PromptOptions, ctx: CallContext = {}): string {
-  const { client, agent, interview } = brief;
-  const them = firstName(client.name);
+  const { agent, interview } = brief;
+  const them = firstName(speakerName(brief));
   const hi = them ? `Hi ${them}` : "Hi there";
   const progress = ctx.progress;
 

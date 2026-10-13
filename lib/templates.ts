@@ -7,6 +7,7 @@ import type { InterviewInput } from "./types";
 type Template = { id: string; name: string; description: string; input: InterviewInput };
 
 const base = {
+  audience: "client",
   role: "",
   method: "",
   opening: "",
@@ -91,6 +92,62 @@ Then mention the checklist items still missing, thank them, and say goodbye.`,
         },
       ],
       estimatedMinutes: 50,
+    },
+  },
+  {
+    id: "team-briefing",
+    name: "Team briefing",
+    description: "The agent interviews you, not the client: what you know, what's missing, and what matters most, so the client interview can be sharper.",
+    input: {
+      ...base,
+      audience: "team",
+      kind: "interview",
+      title: "Team briefing",
+      role: "You're interviewing someone on the team who works with this client, before the client interview. Learn what they already know, what's uncertain, and what matters most, so the client's interview can skip the known and dig where it counts.",
+      goal: "For every area of the client's business: what the team already knows, what they're unsure about, and what they most need from the client. Plus priorities, sensitivities, and anything the client interview should avoid.",
+      topics: [
+        {
+          id: "what-we-know",
+          title: "What we know",
+          opener: "Tell me about this client like you're briefing a new teammate. What's their business, and how did you start working together?",
+          examples: ["their story", "what they sell", "who they serve", "where they are now"],
+        },
+        {
+          id: "gaps",
+          title: "What we don't know",
+          opener: "Where are the gaps? What would you most like to hear from them in their own words?",
+          examples: ["things you're guessing", "things you've heard secondhand", "numbers you don't have"],
+        },
+        {
+          id: "priorities",
+          title: "What matters most",
+          opener: "What's the project, and what does it need from this interview above everything else?",
+          examples: ["deadlines", "the deliverable", "decisions waiting on them", "what success looks like"],
+        },
+        {
+          id: "sensitivities",
+          title: "Handle with care",
+          opener: "Is there anything to avoid, handle carefully, or not mention?",
+          examples: ["confidential topics", "claims we can't make", "sore spots", "how they like to be talked to"],
+        },
+        {
+          id: "the-person",
+          title: "The person",
+          opener: "How do they talk, and what will make them open up?",
+          examples: ["language", "pace", "humor", "what they're proud of"],
+        },
+      ],
+      closing: "Read back the three things you'd most want to ask the client, ask if anything's missing, save your summary, and say goodbye.",
+      report: `Write a briefing that will be used to rewrite the client's interview:
+
+1. **What the team already knows**, by area, so the client is never asked to repeat it.
+2. **Gaps**, ranked by how much they matter to the project.
+3. **Recommended topics** for the client interview: for each, a one-line opener and three to six examples, ordered by relevance. Mark anything from the current brief that should be cut.
+4. **Sensitivities**: topics to avoid, claims not to make, how to handle them.
+5. **How to talk to them**: language, tone, pace.
+
+Report only what was said. Mark guesses as guesses.`,
+      estimatedMinutes: 20,
     },
   },
   {

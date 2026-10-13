@@ -188,6 +188,7 @@ function toInterview(r: Row): Interview {
     id: String(r.id),
     agentId: String(r.agent_id),
     kind: String(r.kind) === "open_line" ? "open_line" : "interview",
+    audience: String(r.audience) === "team" ? "team" : "client",
     title: String(r.title),
     role: String(r.role),
     goal: String(r.goal),
@@ -229,6 +230,7 @@ export async function getInterview(id: string): Promise<Interview | null> {
 function interviewArgs(input: InterviewInput) {
   return [
     input.kind,
+    input.audience,
     input.title,
     input.role,
     input.goal,
@@ -247,9 +249,9 @@ export async function createInterview(agentId: string, input: InterviewInput): P
   const id = randomUUID();
   const t = now();
   await run(
-    `INSERT INTO interviews (kind, title, role, goal, method, opening, topics, closing, checklist, report,
+    `INSERT INTO interviews (kind, audience, title, role, goal, method, opening, topics, closing, checklist, report,
        estimated_minutes, archived, id, agent_id, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [...interviewArgs(input), id, agentId, t, t],
   );
   return (await getInterview(id))!;
@@ -257,7 +259,7 @@ export async function createInterview(agentId: string, input: InterviewInput): P
 
 export async function updateInterview(id: string, input: InterviewInput) {
   await run(
-    `UPDATE interviews SET kind = ?, title = ?, role = ?, goal = ?, method = ?, opening = ?, topics = ?, closing = ?,
+    `UPDATE interviews SET kind = ?, audience = ?, title = ?, role = ?, goal = ?, method = ?, opening = ?, topics = ?, closing = ?,
        checklist = ?, report = ?, estimated_minutes = ?, archived = ?, updated_at = ?
      WHERE id = ?`,
     [...interviewArgs(input), now(), id],

@@ -356,6 +356,48 @@ export async function listVoices(): Promise<Voice[]> {
   return res.voices ?? [];
 }
 
+export interface LibraryVoice {
+  public_owner_id: string;
+  voice_id: string;
+  name: string;
+  accent?: string;
+  gender?: string;
+  age?: string;
+  descriptive?: string;
+  use_case?: string;
+  language?: string;
+  locale?: string;
+  description?: string;
+  preview_url?: string;
+  cloned_by_count?: number;
+  live_moderation_enabled?: boolean;
+  is_added_by_user?: boolean;
+  verified_languages?: { language: string; accent?: string; locale?: string; preview_url?: string }[] | null;
+}
+
+/** Search ElevenLabs' shared voice library. Live-moderated voices can't be used by agents, so they're left out. */
+export async function searchVoiceLibrary(filters: {
+  search?: string;
+  gender?: string;
+  language?: string;
+  accent?: string;
+  age?: string;
+}) {
+  const q = new URLSearchParams({ page_size: "30", include_live_moderated: "false", include_custom_rates: "false" });
+  for (const [k, v] of Object.entries(filters)) if (v) q.set(k, v);
+  const res = await call<{ voices: LibraryVoice[]; has_more: boolean }>(`/v1/shared-voices?${q}`);
+  return res.voices.filter((v) => !v.live_moderation_enabled);
+}
+
+/** Add a shared library voice to this account so agents can use it. Returns the voice id to use. */
+export async function addLibraryVoice(publicOwnerId: string, voiceId: string, name: string) {
+  const res = await call<{ voice_id: string }>(
+    `/v1/voices/add/${encodeURIComponent(publicOwnerId)}/${encodeURIComponent(voiceId)}`,
+    { method: "POST", body: JSON.stringify({ new_name: name.slice(0, 80) }) },
+  );
+  return res.voice_id;
+}
+
 // ------------------------------------------------------------ webhooks
 
 /**

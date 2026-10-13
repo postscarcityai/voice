@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getSession, listRequests } from "@/lib/db/queries";
 import { answerRows } from "@/lib/export";
 import { syncFromElevenLabs } from "@/lib/sessions";
+import { speakerName } from "@/lib/prompt";
 import { SessionTools } from "@/components/admin/SessionTools";
 import {
   Badge,
@@ -61,7 +62,7 @@ async function SessionDetail({ params }: Pick<Props, "params">) {
           </h1>
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-fg-muted">
             <span>
-              {agent.name} with {client.name}
+              {agent.name} with {speakerName(session.brief)}
             </span>
             <span className="opacity-40">·</span>
             <span>{fmtDate(session.startedAt)}</span>
@@ -193,7 +194,7 @@ async function SessionDetail({ params }: Pick<Props, "params">) {
                   <li key={i} className="text-sm leading-relaxed">
                     <div className="mb-0.5 flex items-baseline gap-2">
                       <span className={`text-xs font-semibold ${t.role === "agent" ? "text-accent" : ""}`}>
-                        {t.role === "agent" ? agent.name : client.name}
+                        {t.role === "agent" ? agent.name : speakerName(session.brief)}
                       </span>
                       <span className="font-mono text-[10px] text-fg-muted">{clock(t.time)}</span>
                     </div>

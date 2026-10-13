@@ -42,6 +42,7 @@ export const SCHEMA = [
     id TEXT PRIMARY KEY,
     agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
     kind TEXT NOT NULL DEFAULT 'interview',
+    audience TEXT NOT NULL DEFAULT 'client',
     title TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT '',
     goal TEXT NOT NULL DEFAULT '',
@@ -115,6 +116,13 @@ export const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS requests_client ON requests(client_id, created_at)`,
 ];
 
+/**
+ * Columns added after a table first shipped. CREATE TABLE IF NOT EXISTS won't
+ * add them to an existing database, so each runs on startup; "already exists"
+ * errors mean it's done.
+ */
+const ADDED_COLUMNS = [["interviews", "audience TEXT NOT NULL DEFAULT 'client'"]];
+
 const TABLES = ["clients", "agents", "interviews", "links", "sessions", "requests", "settings"];
 
 /**
@@ -170,6 +178,13 @@ async function connect(): Promise<Database> {
     ? await postgres(url)
     : await sqlite(url, process.env.DATABASE_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN || undefined);
   await database.batch([...SCHEMA, ...(isPostgres ? POSTGRES_ONLY : [])].map((sql) => ({ sql })));
+  for (const [table, column] of ADDED_COLUMNS) {
+    try {
+      await database.query(`ALTER TABLE ${table} ADD COLUMN ${isPostgres ? "IF NOT EXISTS " : ""}${column}`);
+    } catch (err) {
+      if (!/duplicate column|already exists/i.test(String(err))) throw err;
+    }
+  }
   return database;
 }
 

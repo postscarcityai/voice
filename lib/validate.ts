@@ -118,6 +118,7 @@ export function parseInterviewInput(body: unknown): Result<InterviewInput> {
   return {
     input: {
       kind: b.kind === "open_line" ? "open_line" : "interview",
+      audience: b.audience === "team" ? "team" : "client",
       title,
       role: text(b.role, 6000),
       goal: text(b.goal, 4000),

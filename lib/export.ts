@@ -1,5 +1,6 @@
 import type { Interview, Session } from "./types";
 import { interviewProgress } from "./progress";
+import { speakerName } from "./prompt";
 
 // Exports: Markdown for reading and sharing, JSON for pipelines, CSV (one row
 // per topic) for spreadsheets. A single call, or a whole interview.
@@ -69,9 +70,9 @@ function answersMarkdown(answers: AnswerRow[]): string[] {
 }
 
 function transcriptMarkdown(s: Session): string[] {
-  const { client, agent } = s.brief;
+  const { agent } = s.brief;
   return s.transcript.flatMap((t) => [
-    `**${t.role === "agent" ? agent.name : client.name}**${t.time != null ? ` (${fmtTime(t.time)})` : ""}: ${t.message}`,
+    `**${t.role === "agent" ? agent.name : speakerName(s.brief)}**${t.time != null ? ` (${fmtTime(t.time)})` : ""}: ${t.message}`,
     "",
   ]);
 }

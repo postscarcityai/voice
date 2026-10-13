@@ -1,7 +1,7 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "./env";
-import { DEFAULT_REPORT } from "./prompt";
+import { DEFAULT_REPORT, speakerName } from "./prompt";
 import { listRequests, listSessions, saveInterviewReport } from "./db/queries";
 import { interviewProgress } from "./progress";
 import type { Brief, Session } from "./types";
@@ -18,7 +18,7 @@ const clock = (secs: number | null) =>
   secs == null ? "" : `[${Math.floor(secs / 60)}:${String(Math.floor(secs % 60)).padStart(2, "0")}] `;
 
 function callBlock(brief: Brief, s: Session): string {
-  const { client, agent, interview } = brief;
+  const { agent, interview } = brief;
   const title = (id: string) => interview.topics.find((t) => t.id === id)?.title ?? id;
   const lines = [`<call number="${s.callNumber}" date="${s.startedAt.slice(0, 16).replace("T", " ")} UTC" status="${s.status}">`];
 
@@ -37,7 +37,8 @@ function callBlock(brief: Brief, s: Session): string {
   }
   if (s.closingSummary) lines.push(`<agent_summary>${s.closingSummary}</agent_summary>`);
   lines.push("<transcript>");
-  for (const t of s.transcript) lines.push(`${clock(t.time)}${t.role === "agent" ? agent.name : client.name}: ${t.message}`);
+  const speaker = speakerName(brief);
+  for (const t of s.transcript) lines.push(`${clock(t.time)}${t.role === "agent" ? agent.name : speaker}: ${t.message}`);
   lines.push("</transcript>", "</call>");
   return lines.join("\n");
 }
@@ -80,7 +81,11 @@ export async function generateReport(brief: Brief): Promise<string> {
     .filter(Boolean)
     .join("\n");
 
-  const system = `You write handoff reports for ${owner} at ${env.orgName}, from voice conversations between ${client.name} and ${agent.name}, a voice agent. The transcripts come from speech recognition, so expect small transcription errors; quote carefully and fix only obvious mis-hearings.
+  const about =
+    interview.audience === "team"
+      ? `internal briefing calls in which ${agent.name}, a voice agent, interviews ${speakerName(brief)} (on the team) about the client, ${client.name}`
+      : `voice conversations between ${client.name} and ${agent.name}, a voice agent`;
+  const system = `You write handoff reports for ${owner} at ${env.orgName}, from ${about}. The transcripts come from speech recognition, so expect small transcription errors; quote carefully and fix only obvious mis-hearings.
 
 What the handoff must contain:
 

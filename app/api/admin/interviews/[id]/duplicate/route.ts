@@ -10,6 +10,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/admin/inter
   if (agentId && !target) return fail("Unknown agent.");
   const copy = await createInterview(target?.id ?? source.agentId, {
     kind: source.kind,
+    audience: source.audience,
     title: target ? source.title : `${source.title} (copy)`,
     role: source.role,
     goal: source.goal,

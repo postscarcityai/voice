@@ -43,6 +43,9 @@ export interface Agent {
 
 export type InterviewKind = "interview" | "open_line";
 
+/** Who's on the call: the client, or someone on your team (an internal briefing about the client) */
+export type Audience = "client" | "team";
+
 export interface Topic {
   /** Stable id the agent passes to its tools, e.g. "story" */
   id: string;
@@ -69,6 +72,7 @@ export interface Interview {
   id: string;
   agentId: string;
   kind: InterviewKind;
+  audience: Audience;
   title: string;
   /** Who the agent is in this conversation and on whose behalf */
   role: string;

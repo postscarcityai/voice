@@ -33,6 +33,7 @@ const autosize = "[field-sizing:content]";
 export function InterviewForm({ interview }: { interview: Interview }) {
   const [d, setD] = useState<InterviewInput>(() => ({
     kind: interview.kind,
+    audience: interview.audience,
     title: interview.title,
     role: interview.role,
     goal: interview.goal,
@@ -64,7 +65,7 @@ export function InterviewForm({ interview }: { interview: Interview }) {
   return (
     <div className="flex flex-col gap-6">
       <FormCard title="Basics">
-        <div className="grid gap-4 sm:grid-cols-[1fr_200px_140px]">
+        <div className="grid gap-4 sm:grid-cols-[1fr_180px_180px_110px]">
           <Field label="Title">
             <input className="field" value={d.title} onChange={(e) => set("title", e.target.value)} />
           </Field>
@@ -72,6 +73,16 @@ export function InterviewForm({ interview }: { interview: Interview }) {
             <select className="field" value={d.kind} onChange={(e) => set("kind", e.target.value as InterviewInput["kind"])}>
               <option value="interview">Interview (topics)</option>
               <option value="open_line">Open line (requests)</option>
+            </select>
+          </Field>
+          <Field label="Talking to">
+            <select
+              className="field"
+              value={d.audience}
+              onChange={(e) => set("audience", e.target.value as InterviewInput["audience"])}
+            >
+              <option value="client">The client</option>
+              <option value="team">My team (briefing)</option>
             </select>
           </Field>
           <Field label="Minutes" hint={openLine ? undefined : `Suggested: ${suggested}`}>

@@ -1,5 +1,6 @@
 import type { Brief } from "./types";
 import { publicPoints, type Progress } from "./progress";
+import { speakerName } from "./prompt";
 
 /**
  * What the client's browser is allowed to know: names, topic titles, openers
@@ -10,8 +11,9 @@ export function publicBrief(brief: Brief, orgName: string, progress: Progress | 
   const { client, agent, interview } = brief;
   return {
     agentName: agent.name,
-    clientFirstName: client.name.trim().split(/\s+/)[0] || null,
-    ownerFirstName: client.owner.trim().split(/\s+/)[0] || null,
+    // Whoever is on the call (the client, or a teammate for a briefing)
+    clientFirstName: speakerName(brief).trim().split(/\s+/)[0] || null,
+    ownerFirstName: interview.audience === "team" ? null : client.owner.trim().split(/\s+/)[0] || null,
     orgName,
     kind: interview.kind,
     title: interview.title,
