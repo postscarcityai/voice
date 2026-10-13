@@ -16,8 +16,17 @@ export interface Progress {
 }
 
 export function interviewProgress(interview: Interview, sessions: Session[]): Progress {
-  // Oldest first, so later calls refine earlier ones
-  const ordered = [...sessions].sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+  // Only calls where something happened: one that never connected isn't "call 1".
+  // Oldest first, so later calls refine earlier ones.
+  const ordered = sessions
+    .filter(
+      (s) =>
+        s.transcript.length > 0 ||
+        Boolean(s.closingSummary) ||
+        s.checklist.length > 0 ||
+        s.topics.some((t) => t.status !== "pending" || t.points.length > 0),
+    )
+    .sort((a, b) => a.startedAt.localeCompare(b.startedAt));
   const topics: TopicState[] = interview.topics.map((t) => ({ topicId: t.id, status: "pending", points: [], summary: null }));
   const general: Point[] = [];
   const checklist = new Map<string, string>();
