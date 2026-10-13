@@ -141,7 +141,7 @@ const numbered = (sql: string) => {
 async function postgres(url: string): Promise<Database> {
   const { default: connect } = await import("postgres");
   // prepare: false works with transaction poolers (Supabase on :6543, PgBouncer, Neon pooled URLs)
-  const sql = connect(url, { prepare: false, max: 5, idle_timeout: 20, connect_timeout: 15 });
+  const sql = connect(url, { prepare: false, max: 5, idle_timeout: 20, connect_timeout: 15, onnotice: () => {} });
   return {
     query: async (text, args = []) => [...(await sql.unsafe(numbered(text), args))] as Row[],
     batch: async (statements) => {
