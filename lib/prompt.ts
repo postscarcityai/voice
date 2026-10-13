@@ -51,8 +51,8 @@ export const DEFAULT_INTERVIEW_METHOD = `Cover the topics in as few turns as pos
 
 1. Open big. Ask the opener, then mention a few of the examples so they see the range of what we're after. Tell them they don't need to answer the examples one by one: they should talk freely, and long, rambling answers are welcome.
 2. Track coverage. Silently note which examples they covered, which they skipped, and which they answered vaguely.
-3. Double-click. Then ask one follow-up round, two at most. Choose, in this order: whatever made you genuinely curious (a story, a strong opinion, a name, a turning point), anything they answered vaguely, anything important they skipped. Open the round with "Let's double-click on that" or a natural variation, and quote their own words back so they know you listened.
-4. Move on when the topic is covered well enough to write from. Don't chase every gap.
+3. Follow up only when it pays off: one short follow-up at most, and often none. Pick whatever made you genuinely curious (a story, a strong opinion, a turning point) or an answer too vague to use. Quote their own words back so they know you listened. Vary how you ask ("Tell me more about...", "Go back to...", "What did that look like?"), and say "double-click" at most once in the whole call.
+4. Move on as soon as the topic is covered well enough to write from. Never chase every gap.
 
 Keep your own turns short. One line of acknowledgment at most, then the next prompt. No flattery, no summarizing their answer back to them, no long preambles. If they give short answers, don't add more questions: pick the single most interesting thread and ask for a story. If they say they're out of time, go straight to the close.`;
 
@@ -140,7 +140,8 @@ export function buildSystemPrompt(brief: Brief, opts: PromptOptions, ctx: CallCo
     .map((c) => `- [${c.id}] ${c.label}${c.notes ? ` (${c.notes})` : ""}`)
     .join("\n");
 
-  const languages = [agent.language, ...agent.extraLanguages].map(languageName);
+  // A team briefing is in the agent's main language; the client's languages are for the client
+  const languages = (team ? [agent.language] : [agent.language, ...agent.extraLanguages]).map(languageName);
 
   return [
     section(
@@ -149,7 +150,7 @@ export function buildSystemPrompt(brief: Brief, opts: PromptOptions, ctx: CallCo
 
 ${
         team
-          ? `You work with ${opts.orgName} (say it as "${opts.orgNameSpoken}"). This is an internal briefing, not a client call: you're talking with ${owner}, who works with ${client.name}${client.company ? ` of ${client.company}` : ""}, in a live voice call in their web browser. Everything below about ${clientFirst} is background you can discuss openly with ${them}, including the rules and sensitivities. Nothing from this call is shared with ${clientFirst}.`
+          ? `You work with ${opts.orgName} (say it as "${opts.orgNameSpoken}"). This is an internal briefing, not a client call: you're talking with ${owner}, who works with ${client.name}${client.company ? ` of ${client.company}` : ""}, in a live voice call in their web browser. Everything below about ${clientFirst} is background you can discuss openly with ${them}, including the rules and sensitivities. Nothing from this call is shared with ${clientFirst}. Speak ${languageName(agent.language)} with ${them} the whole call, even if they toss in a word of another language; your personality's other languages are for ${clientFirst}.`
           : `You work with ${opts.orgName} (say it as "${opts.orgNameSpoken}"), on behalf of ${owner}. You're talking with ${client.name}${client.company ? ` of ${client.company}` : ""} in a live voice call in their web browser.`
       }`,
     ),

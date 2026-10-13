@@ -172,7 +172,8 @@ const systemTool = (name: string, description: string, params: Record<string, un
 export function agentConfig(brief: Brief, toolIds: string[], ctx: CallContext = {}) {
   const { client, agent, interview } = brief;
   const opts = { orgName: env.orgName, orgNameSpoken: env.orgNameSpoken };
-  const multilingual = agent.extraLanguages.length > 0;
+  // Team briefings stay in the agent's main language
+  const multilingual = agent.extraLanguages.length > 0 && interview.audience !== "team";
 
   const dataCollection = Object.fromEntries(
     interview.topics.slice(0, MAX_DATA_COLLECTION).map((t) => [
