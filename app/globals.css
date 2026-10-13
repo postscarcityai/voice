@@ -1,0 +1,193 @@
+@import "tailwindcss";
+
+/* Admin follows the system theme. The client stage (.stage) is always dark: the orb is a light in a dark room. */
+:root {
+  --bg: #f7f4ee;
+  --surface: #ffffff;
+  --muted: #efebe3;
+  --border: #e2dcd0;
+  --fg: #1b1612;
+  --fg-muted: #6f665c;
+  --accent: #d96a1e;
+  --accent-fg: #ffffff;
+  --ok: #2f7d5b;
+  --warn: #b7791f;
+  --danger: #b4382c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d0a08;
+    --surface: #16110d;
+    --muted: #1f1813;
+    --border: #2d241d;
+    --fg: #f5efe2;
+    --fg-muted: #a89c8c;
+    --accent: #f08a3e;
+    --accent-fg: #170905;
+    --ok: #5fbf8f;
+    --warn: #e0a64a;
+    --danger: #e8705f;
+  }
+}
+
+.stage {
+  --bg: #0d0a08;
+  --surface: #16110d;
+  --muted: #1f1813;
+  --border: rgba(245, 239, 226, 0.12);
+  --fg: #f5efe2;
+  --fg-muted: rgba(245, 239, 226, 0.58);
+  --accent: #f08a3e;
+  --accent-fg: #170905;
+  --ok: #8fd3ad;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-instrument-serif), Georgia, serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+@keyframes point-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+.point-in {
+  animation: point-in 600ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fade-in 700ms ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .point-in,
+  .fade-in {
+    animation: none;
+  }
+}
+
+/* Form controls in admin. In a layer so utilities like w-auto can override them. */
+@layer components {
+  .field {
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    padding: 0.55rem 0.75rem;
+    font-size: 0.9rem;
+    outline: none;
+  }
+
+  .field:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+}
+
+/* Generated reports */
+.prose-voice {
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+.prose-voice h1 {
+  font-family: var(--font-serif);
+  font-size: 2.25rem;
+  line-height: 1.05;
+  margin: 0 0 1.25rem;
+}
+.prose-voice h2 {
+  font-family: var(--font-serif);
+  font-size: 1.6rem;
+  line-height: 1.15;
+  margin: 2rem 0 0.75rem;
+}
+.prose-voice h3 {
+  font-weight: 600;
+  margin: 1.5rem 0 0.5rem;
+}
+.prose-voice p,
+.prose-voice ul,
+.prose-voice ol,
+.prose-voice blockquote,
+.prose-voice table {
+  margin: 0 0 0.9rem;
+}
+.prose-voice ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.prose-voice ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+.prose-voice li {
+  margin: 0.2rem 0;
+}
+.prose-voice blockquote {
+  border-left: 2px solid var(--accent);
+  padding-left: 1rem;
+  color: var(--fg-muted);
+  font-style: italic;
+}
+.prose-voice table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  display: block;
+  overflow-x: auto;
+}
+.prose-voice th,
+.prose-voice td {
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+}
+.prose-voice th {
+  background: var(--muted);
+  font-weight: 600;
+}
+.prose-voice strong {
+  font-weight: 600;
+}
+.prose-voice code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
