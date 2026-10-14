@@ -1,0 +1,23 @@
+# Custom SMTP for Supabase Auth emails (admin sign-in links). Kept apart from
+# ../../config.toml so routine auth pushes never need the SMTP password.
+# Run once (and again only to rotate the key or change the sender):
+#
+#   SMTP_PASS=<sendgrid api key> SMTP_SENDER=voice@your-domain \
+#     npx supabase config push --workdir supabase/smtp --project-ref <your-project-ref>
+#
+# Works with any SMTP provider; these values are for SendGrid.
+
+project_id = "voice-smtp"
+
+[auth.email.smtp]
+enabled = true
+host = "smtp.sendgrid.net"
+port = 587
+user = "apikey"
+pass = "env(SMTP_PASS)"
+admin_email = "env(SMTP_SENDER)"
+sender_name = "Voice"
+
+[auth.rate_limit]
+# Sign-in emails per hour (Supabase's built-in mailer allows only a few)
+email_sent = 60

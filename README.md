@@ -164,7 +164,13 @@ Microphones need HTTPS, except on localhost.
     npx supabase config push --project-ref <your-project-ref>
   ```
 
-  Supabase's built-in email only sends to members of your Supabase organization and is rate-limited; add custom SMTP in Supabase for anything more. `ADMIN_PASSWORD` still works as an alternative or fallback.
+  Supabase's built-in email only sends to members of your Supabase organization and is rate-limited. For reliable delivery to anyone, point Supabase at your own SMTP (SendGrid shown; any provider works). The password is read from your shell, so it never lands in a file or your shell history:
+
+  ```bash
+  read -rs "SMTP_PASS?SMTP password or API key: " && echo
+  SMTP_PASS="$SMTP_PASS" SMTP_SENDER=voice@your-domain \
+    npx supabase config push --workdir supabase/smtp --project-ref <your-project-ref>
+  ``` `ADMIN_PASSWORD` still works as an alternative or fallback.
 - Share links are 144-bit random tokens. You can turn a link off, or archive an interview, at any time. Each link can start `SESSIONS_PER_LINK_PER_DAY` calls a day (default 10).
 - Live events from a browser need that call's own secret key, issued when the call starts.
 - The welcome screen tells the client that the call is recorded and transcribed and that the agent is an AI. Check what consent your clients' jurisdictions require.
