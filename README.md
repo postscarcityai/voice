@@ -71,7 +71,8 @@ cd voice
 npm install
 
 cp .env.example .env.local
-# Set ELEVENLABS_API_KEY, ADMIN_PASSWORD and SESSION_SECRET (openssl rand -base64 48)
+# Set ELEVENLABS_API_KEY, SESSION_SECRET (openssl rand -base64 48), and either
+# ADMIN_EMAILS + SUPABASE_URL + SUPABASE_PUBLISHABLE_KEY (email sign-in) or ADMIN_PASSWORD
 # Optional: ANTHROPIC_API_KEY for handoff reports
 
 npm run dev
@@ -143,7 +144,7 @@ Voice is a standard Next.js app. Tables are created on the first request. The da
 | `postgres://…` | Postgres: [Supabase](https://supabase.com), [Neon](https://neon.tech), any Postgres | Vercel and other serverless hosts |
 | `libsql://…` | [Turso](https://turso.tech), with `DATABASE_AUTH_TOKEN` | Serverless, if you prefer SQLite |
 
-**On Vercel:** import the repo, set `DATABASE_URL` to your Postgres connection string (on Supabase: Connect → Transaction pooler, port 6543), and set `ELEVENLABS_API_KEY`, `ADMIN_PASSWORD`, `SESSION_SECRET`, and optionally `ANTHROPIC_API_KEY` and `PUBLIC_URL`. To load a client into production, run the seed locally against the production database:
+**On Vercel:** import the repo, set `DATABASE_URL` to your Postgres connection string (on Supabase: Connect → Transaction pooler, port 6543), and set `ELEVENLABS_API_KEY`, `SESSION_SECRET`, your admin sign-in settings (below), and optionally `ANTHROPIC_API_KEY` and `PUBLIC_URL`. To load a client into production, run the seed locally against the production database:
 
 ```bash
 DATABASE_URL="postgres://…" npm run seed -- clients/acme.json
@@ -156,6 +157,14 @@ Microphones need HTTPS, except on localhost.
 ## Security and privacy
 
 - `/admin` and `/api/admin/*` require the admin cookie. It's signed with `SESSION_SECRET`, HTTP-only, and expires after 14 days.
+- **Admin sign-in by email link.** Set `ADMIN_EMAILS` (comma-separated) plus `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. Supabase Auth emails the link and proves the address; the app then issues its own admin cookie. Only listed addresses get a link, and the sign-in form never reveals which addresses are admins. Push the Auth settings and email template once:
+
+  ```bash
+  SITE_URL=https://your-domain CONFIRM_URL=https://your-domain/auth/confirm \
+    npx supabase config push --project-ref <your-project-ref>
+  ```
+
+  Supabase's built-in email only sends to members of your Supabase organization and is rate-limited; add custom SMTP in Supabase for anything more. `ADMIN_PASSWORD` still works as an alternative or fallback.
 - Share links are 144-bit random tokens. You can turn a link off, or archive an interview, at any time. Each link can start `SESSIONS_PER_LINK_PER_DAY` calls a day (default 10).
 - Live events from a browser need that call's own secret key, issued when the call starts.
 - The welcome screen tells the client that the call is recorded and transcribed and that the agent is an AI. Check what consent your clients' jurisdictions require.

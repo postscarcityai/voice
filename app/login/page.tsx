@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { LoginForm } from "@/components/admin/LoginForm";
+import { magicLinkEnabled } from "@/lib/magic-link";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -12,9 +14,14 @@ export default function LoginPage() {
         <h1 className="mt-2 font-serif text-5xl">Voice</h1>
         <p className="mt-2 text-sm text-fg-muted">Admin sign in.</p>
         <Suspense>
-          <LoginForm />
+          <Methods />
         </Suspense>
       </div>
     </main>
   );
+}
+
+async function Methods() {
+  await connection();
+  return <LoginForm email={magicLinkEnabled()} password={Boolean(process.env.ADMIN_PASSWORD)} />;
 }

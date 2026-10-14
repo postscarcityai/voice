@@ -1,0 +1,28 @@
+# Supabase Auth settings for admin sign-in by email link (only Auth is used;
+# the app's data uses a direct Postgres connection). Push to your project:
+#
+#   SITE_URL=https://your-voice-domain CONFIRM_URL=https://your-voice-domain/auth/confirm \
+#     npx supabase config push --project-ref <your-project-ref>
+#
+# Both templates send a link straight to the app's /auth/confirm, so it works
+# on any device. The first sign-in for an address uses the confirmation
+# template; later ones use magic_link.
+
+project_id = "voice"
+
+[auth]
+enabled = true
+site_url = "env(SITE_URL)"
+additional_redirect_urls = ["env(CONFIRM_URL)", "http://localhost:3030/auth/confirm"]
+
+[auth.email]
+enable_signup = true
+otp_expiry = 3600
+
+[auth.email.template.magic_link]
+subject = "Your Voice sign-in link"
+content_path = "./supabase/templates/magic-link.html"
+
+[auth.email.template.confirmation]
+subject = "Your Voice sign-in link"
+content_path = "./supabase/templates/magic-link.html"
