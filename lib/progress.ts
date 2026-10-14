@@ -16,12 +16,13 @@ export interface Progress {
 }
 
 export function interviewProgress(interview: Interview, sessions: Session[]): Progress {
-  // Only calls where something happened: one that never connected isn't "call 1".
+  // Only calls where the client actually took part. One that never connected,
+  // or where they heard the intro and left without a word, isn't "call 1".
   // Oldest first, so later calls refine earlier ones.
   const ordered = sessions
     .filter(
       (s) =>
-        s.transcript.length > 0 ||
+        s.transcript.some((t) => t.role === "user") ||
         Boolean(s.closingSummary) ||
         s.checklist.length > 0 ||
         s.topics.some((t) => t.status !== "pending" || t.points.length > 0),
