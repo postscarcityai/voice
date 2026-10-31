@@ -604,6 +604,29 @@ export async function deleteRequest(id: string) {
 
 // -------------------------------------------------------------- settings
 
+// ---------- Client members ----------
+// People on the client's side who sign in to see their own conversations (/me).
+// One email belongs to one client.
+
+export async function memberClientId(email: string): Promise<string | null> {
+  const [r] = await rows("SELECT client_id FROM client_members WHERE email = ?", [email.trim().toLowerCase()]);
+  return r ? String(r.client_id) : null;
+}
+
+export async function listMembers(clientId: string): Promise<string[]> {
+  return (await rows("SELECT email FROM client_members WHERE client_id = ? ORDER BY email", [clientId])).map((r) => String(r.email));
+}
+
+/** Replace a client's members with this list */
+export async function setMembers(clientId: string, emails: string[]) {
+  const list = [...new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean))];
+  const t = now();
+  await (await db()).batch([
+    { sql: "DELETE FROM client_members WHERE client_id = ?", args: [clientId] },
+    ...list.map((e) => ({ sql: "INSERT INTO client_members (email, client_id, created_at) VALUES (?, ?, ?) ON CONFLICT (email) DO UPDATE SET client_id = excluded.client_id", args: [e, clientId, t] })),
+  ]);
+}
+
 export async function getSetting(key: string): Promise<string | null> {
   const [r] = await rows("SELECT value FROM settings WHERE key = ?", [key]);
   return r ? String(r.value) : null;

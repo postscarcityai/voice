@@ -54,6 +54,24 @@ export async function isValidAdminCookie(value: string | undefined): Promise<boo
   return safeEqual(sig, await hmac(secret(), `admin.${expires}`));
 }
 
+// Client members (lib/db client_members) get their own cookie, bound to one
+// client. It opens /me and nothing under /admin.
+export const MEMBER_COOKIE = "voice_member";
+
+export async function issueMemberCookie(clientId: string) {
+  const expires = Math.floor(Date.now() / 1000) + MAX_AGE_SECONDS;
+  const value = `${expires}.${clientId}.${await hmac(secret(), `member.${clientId}.${expires}`)}`;
+  return { ...(await issueAdminCookie()), name: MEMBER_COOKIE, value };
+}
+
+/** The client id a member cookie is good for, or null */
+export async function memberCookieClient(value: string | undefined): Promise<string | null> {
+  if (!value) return null;
+  const [expires, clientId, sig] = value.split(".");
+  if (!expires || !clientId || !sig || Number(expires) < Date.now() / 1000) return null;
+  return safeEqual(sig, await hmac(secret(), `member.${clientId}.${expires}`)) ? clientId : null;
+}
+
 export function checkPassword(attempt: string): boolean {
   const password = process.env.ADMIN_PASSWORD;
   if (!password) throw new Error("ADMIN_PASSWORD is not set.");

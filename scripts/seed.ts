@@ -6,6 +6,9 @@
  * Shape (see examples/client.example.json):
  *   { "client": {...}, "agents": [{ ..., "interviews": [{...}, ...] }] }
  *
+ * "members" on the client lists emails that can sign in to /me and see
+ * their own conversations.
+ *
  * Long text can live in files next to the JSON: "contextFile", "guardrailsFile"
  * on the client; "roleFile", "methodFile", "reportFile" on an interview.
  *
@@ -24,6 +27,7 @@ import {
   listClients,
   listInterviews,
   listLinks,
+  setMembers,
   updateAgent,
   updateClient,
   updateInterview,
@@ -63,6 +67,11 @@ async function main() {
   const existingClient = (await listClients()).find((c) => c.name === clientInput.name);
   const client = existingClient ? (await updateClient(existingClient.id, clientInput))! : await createClient(clientInput);
   console.log(`${existingClient ? "Updated" : "Created"} client ${client.name}${client.company ? ` (${client.company})` : ""}`);
+  // "members": emails on the client's side who sign in to /me to see their conversations
+  if (Array.isArray(raw.client.members)) {
+    await setMembers(client.id, raw.client.members as string[]);
+    console.log(`  Members: ${(raw.client.members as string[]).join(", ") || "none"}`);
+  }
 
   for (const rawAgent of raw.agents ?? []) {
     const agentInput = must(parseAgentInput(rawAgent), "agent");

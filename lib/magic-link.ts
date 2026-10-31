@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
+import { memberClientId } from "@/lib/db/queries";
 
 // Admin sign-in by email link, using Supabase Auth only to send the email and
 // prove the address. Once proven, the app issues its own admin cookie
@@ -27,9 +28,16 @@ function supabase() {
   });
 }
 
-/** Email a sign-in link. Only admin addresses get one; callers shouldn't reveal which. */
+/** Who an address signs in as: an admin, a member of one client, or nobody */
+export async function roleFor(email: string): Promise<{ admin: true } | { clientId: string } | null> {
+  if (isAdminEmail(email)) return { admin: true };
+  const clientId = await memberClientId(email);
+  return clientId ? { clientId } : null;
+}
+
+/** Email a sign-in link. Only admins and client members get one; callers shouldn't reveal which. */
 export async function sendMagicLink(email: string, confirmUrl: string) {
-  if (!isAdminEmail(email)) return;
+  if (!(await roleFor(email))) return;
   const { error } = await supabase().auth.signInWithOtp({
     email: email.trim().toLowerCase(),
     options: { emailRedirectTo: confirmUrl, shouldCreateUser: true },
@@ -37,10 +45,9 @@ export async function sendMagicLink(email: string, confirmUrl: string) {
   if (error) throw new Error(error.message);
 }
 
-/** Check a link's token. Returns the admin email it proves, or null. */
+/** Check a link's token. Returns the email it proves, or null. */
 export async function verifyMagicLink(tokenHash: string): Promise<string | null> {
   const { data, error } = await supabase().auth.verifyOtp({ token_hash: tokenHash, type: "email" });
   const email = data.user?.email;
-  if (error || !email || !isAdminEmail(email)) return null;
-  return email;
+  return error || !email ? null : email;
 }

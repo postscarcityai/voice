@@ -12,7 +12,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-fg-muted">PostScarcity AI</div>
         <h1 className="mt-2 font-serif text-5xl">Voice</h1>
-        <p className="mt-2 text-sm text-fg-muted">Admin sign in.</p>
+        <p className="mt-2 text-sm text-fg-muted">Sign in.</p>
         <Suspense>
           <Methods />
         </Suspense>

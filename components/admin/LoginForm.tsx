@@ -46,7 +46,7 @@ export function LoginForm({ email: emailEnabled, password: passwordEnabled }: { 
       <div className="mt-8 rounded-lg border border-border bg-surface p-5">
         <p className="font-medium">Check your inbox.</p>
         <p className="mt-2 text-sm leading-relaxed text-fg-muted">
-          If {sentTo} is an admin address, a sign-in link is on its way. It works on any device and expires in an hour.
+          If {sentTo} has access, a sign-in link is on its way. It works on any device and expires in an hour.
         </p>
         <button className="mt-4 text-sm text-fg-muted underline hover:text-fg" onClick={() => setSentTo(null)}>
           Use a different email

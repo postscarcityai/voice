@@ -1,7 +1,7 @@
 import { fail, json, readJson } from "@/lib/http";
 import { magicLinkEnabled, sendMagicLink } from "@/lib/magic-link";
 
-/** Send an admin sign-in link. Always answers the same way, so it can't be used to find admin addresses. */
+/** Send a sign-in link (admins and client members). Always answers the same way, so it can't be used to find admin addresses. */
 export async function POST(request: Request) {
   if (!magicLinkEnabled()) return fail("Email sign-in isn't set up.", 404);
   const { email, next } = (await readJson(request)) as { email?: string; next?: string };
@@ -9,7 +9,7 @@ export async function POST(request: Request) {
 
   const base = process.env.PUBLIC_URL?.replace(/\/$/, "") || new URL(request.url).origin;
   const confirm = new URL("/auth/confirm", base);
-  if (typeof next === "string" && next.startsWith("/admin")) confirm.searchParams.set("next", next);
+  if (typeof next === "string" && (next.startsWith("/admin") || next.startsWith("/me"))) confirm.searchParams.set("next", next);
   try {
     await sendMagicLink(email, confirm.toString());
   } catch (err) {
