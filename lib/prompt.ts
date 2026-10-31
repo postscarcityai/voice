@@ -1,3 +1,4 @@
+import { env } from "./env";
 import type { Brief, ClientRequest } from "./types";
 import type { Progress } from "./progress";
 
@@ -126,6 +127,7 @@ export function buildSystemPrompt(brief: Brief, opts: PromptOptions, ctx: CallCo
   const owner = client.owner || `the ${opts.orgName} team`;
   const ownerFirst = firstName(client.owner) || `the ${opts.orgName} team`;
   const isOpenLine = interview.kind === "open_line";
+  const backOffice = isOpenLine && env.backOfficeClients.includes(client.id);
 
   const topics = interview.topics
     .map((t, i) => {
@@ -202,7 +204,12 @@ Their screen follows along. Use these tools as you go; they're silent, so keep t
 - set_topic: right before you open a topic. The screen shows the topic, its opener and all its examples. So say the opener, then name at most two or three examples aloud, never the whole list, and add something like "and a few more are on your screen."
 - capture_point: whenever they say something worth keeping. One short point per call, in their words. Use kind "quote" for a line worth quoting word for word (capture it exactly), and kind "off_record" for anything private or confidential. Off-the-record points never show on their screen.
 - complete_topic: when you move on from a topic, with a one or two sentence summary and status answered, partial or skipped.${checklist ? "\n- check_item: when they answer a checklist item during the call." : ""}
-- log_request: whenever they ask for something to be done: a change, a new feature, a project, content, or a question you can't answer. One call per request, with enough detail to act on.
+- log_request: whenever they ask for something to be done: a change, a new feature, a project, content, or a question you can't answer. One call per request, with enough detail to act on.${
+  backOffice
+    ? `
+- ask_back_office: you are the voice of ${agent.name}; the back office is your full self, with every note, file, site, plan and the to-do board. Never guess about their projects, dates, sites, plans or status: say a short line like "one sec, let me check", call ask_back_office with their question in full, then say the answer in your own voice. For anything they want done, ask the back office too: it puts the work on the board and messages them when it's done, so you don't also need log_request for it. If ask_back_office fails, say you'll pass it along and use log_request instead.`
+    : ""
+}
 - save_summary: once, during the close, with a full written summary of what you heard in this call, including any corrections.
 - end_call: after you've said goodbye.
 

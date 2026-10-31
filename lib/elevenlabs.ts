@@ -134,9 +134,28 @@ export const CLIENT_TOOLS = [
 
 export type ClientToolName = (typeof CLIENT_TOOLS)[number]["name"];
 
+/**
+ * Only on open lines for BACK_OFFICE_CLIENTS: the agent asks the client's own back-office agent (for
+ * Bootyverse, Qveen on Hermes) and waits for the answer. Only the client's dashboard answers it, so
+ * a call from a plain share link gets an error and the agent logs a request instead.
+ */
+export const BACK_OFFICE_TOOL = {
+  name: "ask_back_office",
+  description:
+    "Ask the back office (your full self, with all the notes, files, sites, calendar and the to-do board) and wait for the answer. Use it for any question about their projects, dates, plans, sites, status or past decisions, and for anything they want done. Say a short line like 'one sec, let me check' first. Pass their question in full, with context from the call.",
+  parameters: {
+    type: "object",
+    required: ["question"],
+    properties: { question: { type: "string", description: "Their question or request, in full, with any context from the call" } },
+  },
+} as const;
+
+export const hasBackOffice = (brief: Brief) =>
+  brief.interview.kind === "open_line" && env.backOfficeClients.includes(brief.client.id);
+
 /** Create the client tools once per workspace and remember their ids */
 async function ensureTools(): Promise<string[]> {
-  const configs = CLIENT_TOOLS.map((t) => ({
+  const configs: Record<string, unknown>[] = CLIENT_TOOLS.map((t) => ({
     type: "client",
     name: t.name,
     description: t.description,
@@ -144,6 +163,8 @@ async function ensureTools(): Promise<string[]> {
     expects_response: false,
     execution_mode: "immediate",
   }));
+  // Last: the back office waits for its answer (a lookup takes 5 to 20 seconds)
+  configs.push({ type: "client", ...BACK_OFFICE_TOOL, expects_response: true, response_timeout_secs: 60 });
   // Tools belong to a workspace, so a different key or region means new tools
   const hash = sha({ configs, api: API, key: sha(env.elevenlabsApiKey) });
   const stored = await getSetting("elevenlabs_tools");
@@ -195,7 +216,8 @@ export function agentConfig(brief: Brief, toolIds: string[], ctx: CallContext = 
         prompt: {
           prompt: buildSystemPrompt(brief, opts, ctx),
           llm: agent.llm || env.defaultLlm || DEFAULT_LLM,
-          tool_ids: toolIds,
+          // The back-office tool is always created last; only back-office open lines get it
+          tool_ids: hasBackOffice(brief) ? toolIds : toolIds.slice(0, CLIENT_TOOLS.length),
           built_in_tools: {
             end_call: systemTool("end_call", "End the call after you've said goodbye, or if they ask to stop."),
             skip_turn: systemTool(

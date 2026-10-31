@@ -45,6 +45,10 @@ export const env = {
   get ttsModel() {
     return process.env.ELEVENLABS_TTS_MODEL || "";
   },
+  /** Client ids whose open line can ask the client's own back-office agent (their dashboard answers the tool) */
+  get backOfficeClients() {
+    return (process.env.BACK_OFFICE_CLIENTS || "").split(",").map((s) => s.trim()).filter(Boolean);
+  },
   get publicUrl() {
     return process.env.PUBLIC_URL?.replace(/\/$/, "") || null;
   },
