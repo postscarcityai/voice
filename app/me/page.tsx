@@ -4,8 +4,8 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { MEMBER_COOKIE, memberCookieClient } from "@/lib/auth";
-import { getClient, listAgents, listInterviews, listLinks, listRequests, listSessions } from "@/lib/db/queries";
-import { interviewProgress, isCovered, publicPoints } from "@/lib/progress";
+import { getClient } from "@/lib/db/queries";
+import { clientPortal } from "@/lib/portal";
 import { SignOut } from "@/components/admin/SignOut";
 import { Badge, Card, Empty, RequestStatusBadge, SectionTitle, btn, fmtDate } from "@/components/admin/ui";
 
@@ -32,32 +32,7 @@ async function Me() {
   const client = clientId ? await getClient(clientId) : null;
   if (!client) redirect("/login?next=/me");
 
-  const agents = await listAgents(client.id);
-  const items = (
-    await Promise.all(
-      agents.map(async (agent) =>
-        (await listInterviews(agent.id))
-          .filter((i) => !i.archived && i.audience === "client")
-          .map((interview) => ({ agent, interview })),
-      ),
-    )
-  ).flat();
-  const sessions = await listSessions({ clientId: client.id }, 200);
-  const requests = (await listRequests({ clientId: client.id, clientFacingOnly: true })).slice(0, 20);
-
-  const cards = await Promise.all(
-    items.map(async ({ agent, interview }) => {
-      const link = (await listLinks(interview.id)).find((l) => !l.revoked);
-      const progress = interviewProgress(interview, sessions.filter((s) => s.interviewId === interview.id));
-      return { agent, interview, link, progress };
-    }),
-  );
-  // Open lines first, then the newest
-  cards.sort((a, b) =>
-    a.interview.kind !== b.interview.kind
-      ? a.interview.kind === "open_line" ? -1 : 1
-      : b.interview.createdAt.localeCompare(a.interview.createdAt),
-  );
+  const { items: cards, requests } = (await clientPortal(client.id))!;
 
   return (
     <>
@@ -76,44 +51,40 @@ async function Me() {
 
         <div className="mt-8 flex flex-col gap-4">
           {cards.length === 0 && <Empty>Nothing here yet. New conversations show up the moment they&apos;re made.</Empty>}
-          {cards.map(({ agent, interview, link, progress }) => {
-            const open = interview.kind === "open_line";
-            const covered = progress.topics.filter((t) => isCovered(t.status)).length;
-            const notes = [
-              ...progress.topics.flatMap((t) => publicPoints(t.points)),
-              ...publicPoints(progress.general),
-            ].slice(-6);
+          {cards.map((item) => {
+            const open = item.kind === "open_line";
+            const { covered, notes } = item;
             return (
-              <Card key={interview.id} className="p-5">
+              <Card key={item.id} className="p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-lg font-semibold">{interview.title}</h2>
-                      {open ? <Badge tone="accent">Any time</Badge> : progress.calls > 0 && covered === interview.topics.length ? <Badge tone="ok">Done</Badge> : null}
+                      <h2 className="text-lg font-semibold">{item.title}</h2>
+                      {open ? <Badge tone="accent">Any time</Badge> : item.calls > 0 && covered === item.topicCount ? <Badge tone="ok">Done</Badge> : null}
                     </div>
                     <p className="mt-1 text-sm text-fg-muted">
-                      With {agent.name}
-                      {!open && ` · ${interview.topics.length} topics · about ${interview.estimatedMinutes} min`}
-                      {progress.calls > 0 && ` · ${progress.calls} call${progress.calls === 1 ? "" : "s"}`}
+                      With {item.agentName}
+                      {!open && ` · ${item.topicCount} topics · about ${item.estimatedMinutes} min`}
+                      {item.calls > 0 && ` · ${item.calls} call${item.calls === 1 ? "" : "s"}`}
                     </p>
                   </div>
-                  {link ? (
-                    <Link href={`/s/${link.token}`} className={btn.primary}>
-                      {progress.calls > 0 && !open ? "Pick up where we left off" : "Start talking"}
+                  {item.path ? (
+                    <Link href={item.path} className={btn.primary}>
+                      {item.calls > 0 && !open ? "Pick up where we left off" : "Start talking"}
                     </Link>
                   ) : (
                     <span className="text-sm text-fg-muted">Not open yet</span>
                   )}
                 </div>
-                {!open && interview.topics.length > 0 && progress.calls > 0 && (
+                {!open && item.topicCount > 0 && item.calls > 0 && (
                   <p className="mt-3 text-xs text-fg-muted">
-                    {covered} of {interview.topics.length} topics covered
+                    {covered} of {item.topicCount} topics covered
                   </p>
                 )}
-                {progress.lastSummary && (
+                {item.lastSummary && (
                   <div className="mt-4 rounded-lg bg-muted p-3 text-sm leading-relaxed">
                     <span className="font-medium">Last time: </span>
-                    {progress.lastSummary}
+                    {item.lastSummary}
                   </div>
                 )}
                 {notes.length > 0 && (

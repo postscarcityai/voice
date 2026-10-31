@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { db, type Args, type Row } from "./index";
 import type {
   Agent,
@@ -625,6 +625,25 @@ export async function setMembers(clientId: string, emails: string[]) {
     { sql: "DELETE FROM client_members WHERE client_id = ?", args: [clientId] },
     ...list.map((e) => ({ sql: "INSERT INTO client_members (email, client_id, created_at) VALUES (?, ?, ?) ON CONFLICT (email) DO UPDATE SET client_id = excluded.client_id", args: [e, clientId, t] })),
   ]);
+}
+
+// ---------- Client keys ----------
+// A client's own dashboard (e.g. the Bootyverse admin) reads that client's
+// conversations through /api/embed with one of these. Only the hash is stored.
+
+const keyHash = (key: string) => createHash("sha256").update(key).digest("hex");
+
+/** Make a key for a client. The raw key is returned once and never stored. */
+export async function createClientKey(clientId: string, label: string): Promise<string> {
+  const key = `vk_${newToken(32)}`;
+  await run("INSERT INTO client_keys (key_hash, client_id, label, created_at) VALUES (?, ?, ?, ?)", [keyHash(key), clientId, label, now()]);
+  return key;
+}
+
+export async function clientForKey(key: string): Promise<string | null> {
+  if (!key.startsWith("vk_")) return null;
+  const [r] = await rows("SELECT client_id FROM client_keys WHERE key_hash = ?", [keyHash(key)]);
+  return r ? String(r.client_id) : null;
 }
 
 export async function getSetting(key: string): Promise<string | null> {

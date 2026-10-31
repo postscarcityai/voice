@@ -109,6 +109,12 @@ export const SCHEMA = [
     client_id TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
     created_at TEXT NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS client_keys (
+    key_hash TEXT PRIMARY KEY,
+    client_id TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    label TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+  )`,
   `CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
@@ -128,7 +134,7 @@ export const SCHEMA = [
  */
 const ADDED_COLUMNS = [["interviews", "audience TEXT NOT NULL DEFAULT 'client'"]];
 
-const TABLES = ["clients", "agents", "interviews", "links", "sessions", "requests", "client_members", "settings"];
+const TABLES = ["clients", "agents", "interviews", "links", "sessions", "requests", "client_members", "client_keys", "settings"];
 
 /**
  * Hosts like Supabase expose the public schema over a REST API. Row level
