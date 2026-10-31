@@ -1,4 +1,3 @@
-import { env } from "./env";
 import type { Brief, ClientRequest } from "./types";
 import type { Progress } from "./progress";
 
@@ -11,6 +10,8 @@ import type { Progress } from "./progress";
 // them into a good phone call.
 
 export interface PromptOptions {
+  /** The open line can ask the client's own back-office agent (ask_back_office) */
+  backOffice?: boolean;
   orgName: string;
   orgNameSpoken: string;
 }
@@ -127,7 +128,7 @@ export function buildSystemPrompt(brief: Brief, opts: PromptOptions, ctx: CallCo
   const owner = client.owner || `the ${opts.orgName} team`;
   const ownerFirst = firstName(client.owner) || `the ${opts.orgName} team`;
   const isOpenLine = interview.kind === "open_line";
-  const backOffice = isOpenLine && env.backOfficeClients.includes(client.id);
+  const backOffice = isOpenLine && Boolean(opts.backOffice);
 
   const topics = interview.topics
     .map((t, i) => {

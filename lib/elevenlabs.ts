@@ -192,7 +192,7 @@ const systemTool = (name: string, description: string, params: Record<string, un
 
 export function agentConfig(brief: Brief, toolIds: string[], ctx: CallContext = {}) {
   const { client, agent, interview } = brief;
-  const opts = { orgName: env.orgName, orgNameSpoken: env.orgNameSpoken };
+  const opts = { orgName: env.orgName, orgNameSpoken: env.orgNameSpoken, backOffice: hasBackOffice(brief) };
   // Team briefings stay in the agent's main language
   const multilingual = agent.extraLanguages.length > 0 && interview.audience !== "team";
 
