@@ -136,7 +136,7 @@ export type ClientToolName = (typeof CLIENT_TOOLS)[number]["name"];
 
 /**
  * Only on open lines for BACK_OFFICE_CLIENTS: the agent asks the client's own back-office agent (for
- * Bootyverse, Qveen on Hermes) and waits for the answer. Only the client's dashboard answers it, so
+ * Bootyverse, Qveen on Hermes; for PostScarcity AI, Monk) and waits for the answer. Only the client's dashboard answers it, so
  * a call from a plain share link gets an error and the agent logs a request instead.
  */
 export const BACK_OFFICE_TOOL = {
