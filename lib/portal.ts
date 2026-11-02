@@ -18,6 +18,8 @@ export interface PortalItem {
   calls: number;
   lastSummary: string | null;
   notes: Point[];
+  /** Interviews: each topic as the call screen shows it, with where it stands and what was said (never off the record) */
+  topics: { id: string; title: string; examples: string[]; status: string; summary: string | null; points: Point[] }[];
   /** Path of the call screen, e.g. /s/<token>; null when the link is off */
   path: string | null;
   createdAt: string;
@@ -56,6 +58,10 @@ export async function clientPortal(clientId: string): Promise<Portal | null> {
         calls: progress.calls,
         lastSummary: progress.lastSummary,
         notes: [...progress.topics.flatMap((t) => publicPoints(t.points)), ...publicPoints(progress.general)].slice(-6),
+        topics: interview.topics.map((t) => {
+          const st = progress.topics.find((x) => x.topicId === t.id);
+          return { id: t.id, title: t.title, examples: t.examples, status: st?.status ?? "pending", summary: st?.summary ?? null, points: publicPoints(st?.points ?? []) };
+        }),
         path: link ? `/s/${link.token}` : null,
         createdAt: interview.createdAt,
       };
